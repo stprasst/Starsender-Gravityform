@@ -196,6 +196,23 @@ class Starsender_Gravity_Forms_Plugin {
             wp_send_json_error(['message' => __('Permission denied', 'starsender-gravity-forms')]);
         }
 
+        // Rate limiting: max 5 tests per minute per user
+        $user_id = get_current_user_id();
+        $rate_limit_key = 'sgf_test_rate_limit_' . $user_id;
+        $test_count = get_transient($rate_limit_key);
+
+        if ($test_count !== false && $test_count >= 5) {
+            wp_send_json_error(['message' => __('Too many test attempts. Please wait a minute before trying again.', 'starsender-gravity-forms')]);
+        }
+
+        // Increment rate limit counter
+        if ($test_count === false) {
+            set_transient($rate_limit_key, 1, 60); // 1 test, expires in 60 seconds
+        } else {
+            set_transient($rate_limit_key, $test_count + 1, 60);
+        }
+
+        // Sanitize and validate inputs
         $api_key = isset($_POST['api_key']) ? sanitize_text_field($_POST['api_key']) : '';
         $admin_numbers = isset($_POST['admin_numbers']) ? sanitize_textarea_field($_POST['admin_numbers']) : '';
 
@@ -203,15 +220,34 @@ class Starsender_Gravity_Forms_Plugin {
             wp_send_json_error(['message' => __('API Key is required', 'starsender-gravity-forms')]);
         }
 
+        // Validate API key format
+        if (!SGF_Starsender_API::validate_api_key($api_key)) {
+            wp_send_json_error(['message' => __('Invalid API Key format', 'starsender-gravity-forms')]);
+        }
+
         $numbers = array_filter(array_map('trim', explode("\n", $admin_numbers)));
         if (empty($numbers)) {
             wp_send_json_error(['message' => __('At least one admin number is required', 'starsender-gravity-forms')]);
         }
 
+        // Validate phone numbers
+        $valid_numbers = [];
+        foreach ($numbers as $number) {
+            // Remove all non-numeric characters for validation
+            $clean_number = preg_replace('/[^0-9]/', '', $number);
+            if (strlen($clean_number) >= 10 && strlen($clean_number) <= 15) {
+                $valid_numbers[] = $number;
+            }
+        }
+
+        if (empty($valid_numbers)) {
+            wp_send_json_error(['message' => __('No valid phone numbers provided', 'starsender-gravity-forms')]);
+        }
+
         $api = new SGF_Starsender_API($api_key);
 
-        $site_name = get_bloginfo('name');
-        $timestamp = current_time('Y-m-d H:i:s');
+        $site_name = sanitize_text_field(get_bloginfo('name'));
+        $timestamp = sanitize_text_field(current_time('Y-m-d H:i:s'));
 
         $test_message = sprintf(
             __("Connectivity test passed. %s is now successfully integrated with WhatsApp. The Starsender global config is enabled, and messages are being delivered without issues.\n\nRef Id: %s", 'starsender-gravity-forms'),
@@ -222,7 +258,7 @@ class Starsender_Gravity_Forms_Plugin {
         $results = [];
         $all_success = true;
 
-        foreach ($numbers as $number) {
+        foreach ($valid_numbers as $number) {
             $result = $api->send_message($number, $test_message);
             $results[$number] = $result;
 

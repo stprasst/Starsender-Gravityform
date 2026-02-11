@@ -158,9 +158,12 @@ class SGF_Form_Handler {
         // Build fields output
         $fields_output = $this->build_fields_output($entry, $form);
 
+        // Sanitize form title for message content
+        $form_title = sanitize_text_field($form['title']);
+
         // Replace placeholders
         $replacements = [
-            '{form_title}' => $form['title'],
+            '{form_title}' => $form_title,
             '{submission_date}' => date('Y-m-d H:i:s', strtotime($entry['date_created'])),
             '{fields}' => $fields_output,
         ];
@@ -168,13 +171,16 @@ class SGF_Form_Handler {
         // Replace custom field placeholders
         foreach ($form['fields'] as $field) {
             $value = $this->get_field_value($field, $entry);
-            $label = $field['label'];
+            $label = sanitize_text_field($field['label']); // Sanitize label used as key
             $replacements['{field:' . $label . '}'] = $value;
-            $replacements['{field:' . $field['id'] . '}'] = $value;
+            $replacements['{field:' . intval($field['id']) . '}'] = $value; // Ensure ID is integer
         }
 
         // Apply replacements
         $message = str_replace(array_keys($replacements), array_values($replacements), $template);
+
+        // Additional sanitization for message content (remove potentially harmful characters for WhatsApp)
+        $message = $this->sanitize_message_content($message);
 
         return $message;
     }
@@ -196,15 +202,38 @@ class SGF_Form_Handler {
         // Build fields output
         $fields_output = $this->build_fields_output($entry, $form);
 
+        // Sanitize form title for message content
+        $form_title = sanitize_text_field($form['title']);
+
         // Replace placeholders
         $replacements = [
-            '{form_title}' => $form['title'],
+            '{form_title}' => $form_title,
             '{submission_date}' => date('Y-m-d H:i:s', strtotime($entry['date_created'])),
             '{fields}' => $fields_output,
         ];
 
         // Apply replacements
         $message = str_replace(array_keys($replacements), array_values($replacements), $template);
+
+        // Additional sanitization for message content
+        $message = $this->sanitize_message_content($message);
+
+        return $message;
+    }
+
+    /**
+     * Sanitize message content for WhatsApp API
+     * Removes potentially harmful characters while preserving WhatsApp formatting
+     *
+     * @param string $message Message content
+     * @return string Sanitized message
+     */
+    private function sanitize_message_content($message) {
+        // Remove control characters except newlines and tabs
+        $message = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $message);
+
+        // Remove null bytes
+        $message = str_replace("\0", '', $message);
 
         return $message;
     }
@@ -233,7 +262,10 @@ class SGF_Form_Handler {
                 continue;
             }
 
-            $output .= '*' . $field['label'] . ':* ' . $value . "\n\n";
+            // Sanitize field label (form configuration could be manipulated)
+            $label = sanitize_text_field($field['label']);
+
+            $output .= '*' . $label . ':* ' . $value . "\n\n";
         }
 
         return rtrim($output);

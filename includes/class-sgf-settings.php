@@ -93,12 +93,16 @@ class SGF_Settings {
 
         foreach ($lines as $line) {
             $number = $this->format_phone_number(trim($line));
-            if (!empty($number)) {
-                $sanitized[] = $number;
+            // Validate minimum length after formatting
+            if (!empty($number) && strlen($number) >= 10) {
+                // Prevent duplicate numbers
+                if (!in_array($number, $sanitized)) {
+                    $sanitized[] = $number;
+                }
             }
         }
 
-        return implode("\n", array_unique($sanitized));
+        return implode("\n", $sanitized);
     }
 
     /**
@@ -111,6 +115,11 @@ class SGF_Settings {
         // Remove leading 0 and replace with 62 (Indonesia)
         if (substr($phone, 0, 1) === '0') {
             $phone = '62' . substr($phone, 1);
+        }
+
+        // Validate length
+        if (strlen($phone) < 10 || strlen($phone) > 15) {
+            return '';
         }
 
         return $phone;
@@ -560,26 +569,56 @@ _Sent via Starsender for Gravity Forms_";
             wp_die(__('Permission denied', 'starsender-gravity-forms'));
         }
 
-        // Save enabled forms
-        $enabled_forms = isset($_POST['sgf_enabled_forms']) ? array_map('intval', $_POST['sgf_enabled_forms']) : [];
-        update_option('sgf_enable_for_forms', $enabled_forms);
+        // Save enabled forms - validate all form IDs
+        $enabled_forms = isset($_POST['sgf_enabled_forms']) ? $_POST['sgf_enabled_forms'] : [];
+        $sanitized_enabled_forms = [];
+        if (is_array($enabled_forms)) {
+            foreach ($enabled_forms as $form_id) {
+                $form_id = intval($form_id);
+                if ($form_id > 0) {
+                    $sanitized_enabled_forms[] = $form_id;
+                }
+            }
+        }
+        update_option('sgf_enable_for_forms', $sanitized_enabled_forms);
 
         // Save country codes per form
         $form_country_codes = isset($_POST['sgf_country_codes']) ? $_POST['sgf_country_codes'] : [];
         $sanitized_country_codes = [];
 
-        foreach ($form_country_codes as $form_id => $country_code) {
-            // Sanitize: only numbers allowed
-            $sanitized_country_codes[$form_id] = preg_replace('/[^0-9]/', '', $country_code);
+        if (is_array($form_country_codes)) {
+            foreach ($form_country_codes as $form_id => $country_code) {
+                // Validate form ID
+                $form_id = intval($form_id);
+                if ($form_id > 0) {
+                    // Sanitize: only numbers allowed, max 3 digits (country codes)
+                    $country_code = preg_replace('/[^0-9]/', '', $country_code);
+                    $country_code = substr($country_code, 0, 3); // Max 3 digits
+                    if (!empty($country_code)) {
+                        $sanitized_country_codes[$form_id] = $country_code;
+                    }
+                }
+            }
         }
 
         update_option('sgf_form_country_codes', $sanitized_country_codes);
 
         // Save require international format per form
         $form_require_international = isset($_POST['sgf_require_international']) ? $_POST['sgf_require_international'] : [];
-        update_option('sgf_form_require_international', $form_require_international);
+        $sanitized_require_international = [];
 
-        add_settings_error('sgf_settings', 'form_settings_saved', __('Form settings saved successfully. ' . count($enabled_forms) . ' form(s) enabled.', 'starsender-gravity-forms'), 'updated');
+        if (is_array($form_require_international)) {
+            foreach ($form_require_international as $form_id => $value) {
+                $form_id = intval($form_id);
+                if ($form_id > 0) {
+                    $sanitized_require_international[$form_id] = true;
+                }
+            }
+        }
+
+        update_option('sgf_form_require_international', $sanitized_require_international);
+
+        add_settings_error('sgf_settings', 'form_settings_saved', __('Form settings saved successfully. ' . count($sanitized_enabled_forms) . ' form(s) enabled.', 'starsender-gravity-forms'), 'updated');
 
         // Redirect back to enable forms page
         wp_redirect(admin_url('admin.php?page=starsender-enable-forms&settings-updated=true'));

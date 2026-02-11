@@ -51,24 +51,35 @@ class SGF_Starsender_API {
      * @return array Response with success status
      */
     public function send_message($to, $message, $message_type = 'text', $file_url = null, $delay = null, $schedule = null) {
+        // Sanitize inputs
+        $to = $this->sanitize_phone_number($to);
+        $message = sanitize_text_field($message);
+        $message_type = sanitize_text_field($message_type);
+
+        // Validate message type
+        $allowed_types = ['text', 'image', 'document', 'video', 'audio'];
+        if (!in_array($message_type, $allowed_types)) {
+            $message_type = 'text';
+        }
+
         $endpoint = self::API_URL . '/send';
 
         $body = [
             'messageType' => $message_type,
-            'to' => $this->format_phone_number($to),
+            'to' => $to,
             'body' => $message,
         ];
 
         if ($file_url !== null) {
-            $body['file'] = $file_url;
+            $body['file'] = esc_url_raw($file_url);
         }
 
         if ($delay !== null) {
-            $body['delay'] = $delay;
+            $body['delay'] = intval($delay);
         }
 
         if ($schedule !== null) {
-            $body['schedule'] = $schedule;
+            $body['schedule'] = intval($schedule);
         }
 
         $response = $this->make_request('POST', $endpoint, $body);
@@ -155,6 +166,16 @@ class SGF_Starsender_API {
      * @return string Formatted phone number
      */
     private function format_phone_number($phone) {
+        return $this->sanitize_phone_number($phone);
+    }
+
+    /**
+     * Sanitize phone number
+     *
+     * @param string $phone Phone number
+     * @return string Sanitized phone number
+     */
+    private function sanitize_phone_number($phone) {
         // Remove all non-numeric characters
         $phone = preg_replace('/[^0-9]/', '', $phone);
 
@@ -162,6 +183,16 @@ class SGF_Starsender_API {
         // This assumes Indonesian numbers (62)
         if (substr($phone, 0, 1) === '0') {
             $phone = '62' . substr($phone, 1);
+        }
+
+        // Validate minimum length (country code + at least 7 digits)
+        if (strlen($phone) < 10) {
+            return '';
+        }
+
+        // Validate maximum length (max 15 digits for international numbers)
+        if (strlen($phone) > 15) {
+            return substr($phone, 0, 15);
         }
 
         return $phone;
@@ -174,7 +205,12 @@ class SGF_Starsender_API {
      * @return bool True if valid format
      */
     public static function validate_api_key($api_key) {
-        return !empty($api_key) && strlen($api_key) > 10;
+        // API key should be alphanumeric, 20-100 characters
+        return !empty($api_key) &&
+               is_string($api_key) &&
+               strlen($api_key) >= 20 &&
+               strlen($api_key) <= 100 &&
+               ctype_alnum($api_key);
     }
 
     /**

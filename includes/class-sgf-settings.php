@@ -68,6 +68,16 @@ class SGF_Settings {
             'default' => [],
         ]);
 
+        register_setting('sgf_settings', 'sgf_form_country_codes', [
+            'type' => 'array',
+            'default' => [],
+        ]);
+
+        register_setting('sgf_settings', 'sgf_form_require_international', [
+            'type' => 'array',
+            'default' => [],
+        ]);
+
         register_setting('sgf_settings', 'sgf_send_to_customer', [
             'type' => 'boolean',
             'default' => false,
@@ -309,13 +319,14 @@ _Sent via Starsender for Gravity Forms_";
         // Get all Gravity Forms
         $forms = $this->get_gravity_forms();
         $enabled_forms = get_option('sgf_enable_for_forms', []);
+        $form_country_codes = get_option('sgf_form_country_codes', []);
+        $form_require_international = get_option('sgf_form_require_international', []);
 
         // Show settings errors if any
         settings_errors('sgf_settings');
         ?>
         <div class="wrap sgf-settings-wrap">
             <h1>
-            
                 <?php _e('Enable for Forms', 'starsender-gravity-forms'); ?>
             </h1>
 
@@ -323,6 +334,10 @@ _Sent via Starsender for Gravity Forms_";
                 <!-- Enabled Forms Card -->
                 <div class="sgf-card">
                     <h2><?php _e('Select Forms to Enable WhatsApp Notifications', 'starsender-gravity-forms'); ?></h2>
+
+                    <p class="description">
+                        <?php _e('Enable forms to send WhatsApp notifications. Configure country code and international format requirement for customer phone numbers.', 'starsender-gravity-forms'); ?>
+                    </p>
 
                     <?php if (empty($forms)) : ?>
                         <p><?php _e('No Gravity Forms found. Create a form first to enable WhatsApp notifications.', 'starsender-gravity-forms'); ?></p>
@@ -342,6 +357,7 @@ _Sent via Starsender for Gravity Forms_";
                                         <th style="width: 50px;"><?php _e('Enabled', 'starsender-gravity-forms'); ?></th>
                                         <th><?php _e('Form Title', 'starsender-gravity-forms'); ?></th>
                                         <th style="width: 100px;"><?php _e('Form ID', 'starsender-gravity-forms'); ?></th>
+                                        <th style="width: 200px;"><?php _e('Phone Settings', 'starsender-gravity-forms'); ?></th>
                                         <th style="width: 100px;"><?php _e('Status', 'starsender-gravity-forms'); ?></th>
                                         <th style="width: 100px;"><?php _e('Entries', 'starsender-gravity-forms'); ?></th>
                                     </tr>
@@ -351,6 +367,8 @@ _Sent via Starsender for Gravity Forms_";
                                         $is_enabled = in_array($form['id'], $enabled_forms);
                                         $status_class = $is_enabled ? 'sgf-status-enabled' : 'sgf-status-disabled';
                                         $status_text = $is_enabled ? __('Enabled', 'starsender-gravity-forms') : __('Disabled', 'starsender-gravity-forms');
+                                        $country_code = isset($form_country_codes[$form['id']]) ? $form_country_codes[$form['id']] : '62';
+                                        $require_international = isset($form_require_international[$form['id']]) ? $form_require_international[$form['id']] : false;
                                         ?>
                                         <tr>
                                             <td>
@@ -363,6 +381,34 @@ _Sent via Starsender for Gravity Forms_";
                                                 <strong><?php echo esc_html($form['title']); ?></strong>
                                             </td>
                                             <td><?php echo esc_html($form['id']); ?></td>
+                                            <td>
+                                                <div style="margin-bottom: 10px;">
+                                                    <label style="font-size: 12px; font-weight: 600;">
+                                                        <input type="checkbox"
+                                                               name="sgf_require_international[<?php echo esc_attr($form['id']); ?>]"
+                                                               value="1"
+                                                               <?php checked($require_international); ?>>
+                                                        <?php _e('Multi-Country Form', 'starsender-gravity-forms'); ?>
+                                                    </label>
+                                                    <p class="description" style="margin: 0 0 5px 0;">
+                                                        <?php _e('Require customers to enter number with + (e.g., +628xxx)', 'starsender-gravity-forms'); ?>
+                                                    </p>
+                                                </div>
+                                                <div style="<?php echo $require_international ? 'opacity: 0.5;' : ''; ?>">
+                                                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 3px;">
+                                                        <?php _e('Default Country Code:', 'starsender-gravity-forms'); ?>
+                                                    </label>
+                                                    <input type="text"
+                                                           name="sgf_country_codes[<?php echo esc_attr($form['id']); ?>]"
+                                                           value="<?php echo esc_attr($country_code); ?>"
+                                                           class="small-text"
+                                                           placeholder="62"
+                                                           <?php disabled($require_international); ?>>
+                                                    <p class="description" style="margin: 0;">
+                                                        <?php _e('Used when customer enters without +', 'starsender-gravity-forms'); ?>
+                                                    </p>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <span class="sgf-status-badge <?php echo $status_class; ?>">
                                                     <?php echo esc_html($status_text); ?>
@@ -381,6 +427,79 @@ _Sent via Starsender for Gravity Forms_";
                             <?php submit_button(__('Save Form Settings', 'starsender-gravity-forms'), 'primary'); ?>
                         </form>
                     <?php endif; ?>
+                </div>
+
+                <!-- Phone Format Info Card -->
+                <div class="sgf-card">
+                    <h2><?php _e('Phone Number Format Information', 'starsender-gravity-forms'); ?></h2>
+
+                    <h3><?php _e('Single Country vs Multi-Country Forms:', 'starsender-gravity-forms'); ?></h3>
+
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Form Type', 'starsender-gravity-forms'); ?></th>
+                                <th><?php _e('Customer Input', 'starsender-gravity-forms'); ?></th>
+                                <th><?php _e('Result', 'starsender-gravity-forms'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td rowspan="3"><strong><?php _e('Single Country', 'starsender-gravity-forms'); ?></strong><br><small>Default Country Code: 62</small></td>
+                                <td><code>085312345678</code></td>
+                                <td><code>6285312345678</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                            <tr>
+                                <td><code>6285312345678</code></td>
+                                <td><code>6285312345678</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                            <tr>
+                                <td><code>+6285312345678</code></td>
+                                <td><code>6285312345678</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="3"><strong><?php _e('Multi-Country', 'starsender-gravity-forms'); ?></strong><br><small>Require International Format: ON</small></td>
+                                <td><code>085312345678</code></td>
+                                <td><code>6285312345678</code> <span class="dashicons dashicons-warning" style="color: orange;"></span></td>
+                            </tr>
+                            <tr>
+                                <td><code>+6285312345678</code></td>
+                                <td><code>6285312345678</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                            <tr>
+                                <td><code>+60123456789</code></td>
+                                <td><code>60123456789</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                            <tr>
+                                <td rowspan="2"><strong><?php _e('International', 'starsender-gravity-forms'); ?></strong></td>
+                                <td><code>+441234567890</code></td>
+                                <td><code>441234567890</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                            <tr>
+                                <td><code>+11234567890</code></td>
+                                <td><code>11234567890</code> <span class="dashicons dashicons-yes" style="color: green;"></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="background: #fffbe0; border-left: 4px solid #dba617; padding: 12px; margin-top: 20px;">
+                        <h4 style="margin-top: 0;"><?php _e('Recommendation for Multi-Country Forms:', 'starsender-gravity-forms'); ?></h4>
+                        <p style="margin-bottom: 0;">
+                            <?php _e('<strong>Enable "Multi-Country Form"</strong> checkbox and add instructions in your phone field placeholder like: "Enter with country code (e.g., +628xxx for Indonesia, +60xxx for Malaysia)"', 'starsender-gravity-forms'); ?>
+                        </p>
+                    </div>
+
+                    <h3 style="margin-top: 20px;"><?php _e('Common Country Codes:', 'starsender-gravity-forms'); ?></h3>
+                    <ul style="list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                        <li><code>62</code> - Indonesia</li>
+                        <li><code>60</code> - Malaysia</li>
+                        <li><code>65</code> - Singapore</li>
+                        <li><code>61</code> - Australia</li>
+                        <li><code>44</code> - United Kingdom</li>
+                        <li><code>1</code> - USA/Canada</li>
+                        <li><code>91</code> - India</li>
+                        <li><code>86</code> - China</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -444,6 +563,21 @@ _Sent via Starsender for Gravity Forms_";
         // Save enabled forms
         $enabled_forms = isset($_POST['sgf_enabled_forms']) ? array_map('intval', $_POST['sgf_enabled_forms']) : [];
         update_option('sgf_enable_for_forms', $enabled_forms);
+
+        // Save country codes per form
+        $form_country_codes = isset($_POST['sgf_country_codes']) ? $_POST['sgf_country_codes'] : [];
+        $sanitized_country_codes = [];
+
+        foreach ($form_country_codes as $form_id => $country_code) {
+            // Sanitize: only numbers allowed
+            $sanitized_country_codes[$form_id] = preg_replace('/[^0-9]/', '', $country_code);
+        }
+
+        update_option('sgf_form_country_codes', $sanitized_country_codes);
+
+        // Save require international format per form
+        $form_require_international = isset($_POST['sgf_require_international']) ? $_POST['sgf_require_international'] : [];
+        update_option('sgf_form_require_international', $form_require_international);
 
         add_settings_error('sgf_settings', 'form_settings_saved', __('Form settings saved successfully. ' . count($enabled_forms) . ' form(s) enabled.', 'starsender-gravity-forms'), 'updated');
 

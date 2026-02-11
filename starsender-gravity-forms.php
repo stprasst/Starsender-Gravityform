@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Starsender for Gravity Forms
- * Plugin URI: https://github.com/yayasanvitka/starsender-gravity-forms
+ * Plugin URI: https://github.com/stprasst/Starsender-Gravityform
  * Description: Send Gravity Forms submissions to WhatsApp admin using Starsender API
- * Version: 1.0.0
- * Author: Yayasanvitka
- * Author URI: https://github.com/yayasanvitka
+ * Version: 1.2.0
+ * Author: Stefanus Eko Prasetyo
+ * Author URI: https://github.com/stprasst
  * License: GPL-2.0+
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain: starsender-gravity-forms
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SGF_VERSION', '1.0.0');
+define('SGF_VERSION', '1.2.0');
 define('SGF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SGF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SGF_PLUGIN_BASENAME', plugin_basename(__FILE__));

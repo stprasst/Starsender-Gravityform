@@ -104,9 +104,11 @@ class SGF_Form_Handler {
         if (get_option('sgf_send_to_customer', false)) {
             $customer_number = $this->get_customer_phone($entry, $form);
             if ($customer_number) {
-                error_log('Starsender GF: Sending copy to customer: ' . $customer_number);
+                // Format the phone number for WhatsApp
+                $formatted_number = $this->format_whatsapp_number($customer_number, $form);
+                error_log('Starsender GF: Customer phone - Original: ' . $customer_number . ', Formatted: ' . $formatted_number);
                 $customer_message = $this->prepare_customer_message($entry, $form);
-                $this->send_to_numbers([$customer_number], $customer_message, $api_key, $entry, $form);
+                $this->send_to_numbers([$formatted_number], $customer_message, $api_key, $entry, $form);
             } else {
                 error_log('Starsender GF: No phone field found in form');
             }
@@ -379,6 +381,54 @@ class SGF_Form_Handler {
             }
         }
         return null;
+    }
+
+    /**
+     * Format phone number for WhatsApp
+     *
+     * @param string $phone Phone number from form
+     * @param array $form The form object
+     * @return string Formatted phone number for WhatsApp
+     */
+    private function format_whatsapp_number($phone, $form) {
+        if (empty($phone)) {
+            return '';
+        }
+
+        // Get form-specific country code setting
+        $form_country_codes = get_option('sgf_form_country_codes', []);
+        $default_country_code = '62'; // Default to Indonesia
+
+        // Check if this form has a specific country code setting
+        if (isset($form_country_codes[$form['id']]) && !empty($form_country_codes[$form['id']])) {
+            $default_country_code = $form_country_codes[$form['id']];
+        }
+
+        // Get form-specific require international setting
+        $form_require_international = get_option('sgf_form_require_international', []);
+        $require_international = isset($form_require_international[$form['id']]) ? $form_require_international[$form['id']] : false;
+
+        // Remove all non-numeric characters except +
+        $phone = preg_replace('/[^\d+]/', '', $phone);
+
+        // If starts with +, it's already in international format
+        if (strpos($phone, '+') === 0) {
+            // Remove the + for Starsender API
+            return substr($phone, 1);
+        }
+
+        // If this is a multi-country form, log a warning for numbers without +
+        if ($require_international) {
+            error_log('Starsender GF: Multi-country form detected but number does not start with +. Using default country code ' . $default_country_code);
+        }
+
+        // If starts with 0, replace with country code
+        if (strpos($phone, '0') === 0) {
+            return $default_country_code . substr($phone, 1);
+        }
+
+        // Already in international format (without +)
+        return $phone;
     }
 
     /**

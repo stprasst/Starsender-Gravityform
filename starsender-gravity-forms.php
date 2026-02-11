@@ -94,6 +94,7 @@ class Starsender_Gravity_Forms_Plugin {
      * Add admin menu
      */
     public function add_admin_menu() {
+        // Main menu - Settings
         add_menu_page(
             __('Starsender for Gravity Forms', 'starsender-gravity-forms'),
             __('Starsender GF', 'starsender-gravity-forms'),
@@ -103,13 +104,33 @@ class Starsender_Gravity_Forms_Plugin {
             'dashicons-whatsapp',
             30
         );
+
+        // Submenu - Settings (same as main)
+        add_submenu_page(
+            'starsender-gravity-forms',
+            __('Settings', 'starsender-gravity-forms'),
+            __('Settings', 'starsender-gravity-forms'),
+            'manage_options',
+            'starsender-gravity-forms',
+            [$this, 'render_settings_page']
+        );
+
+        // Submenu - Enable for Forms
+        add_submenu_page(
+            'starsender-gravity-forms',
+            __('Enable for Forms', 'starsender-gravity-forms'),
+            __('Enable for Forms', 'starsender-gravity-forms'),
+            'manage_options',
+            'starsender-enable-forms',
+            [$this, 'render_enable_forms_page']
+        );
     }
 
     /**
      * Enqueue admin assets
      */
     public function enqueue_admin_assets($hook) {
-        if ('toplevel_page_starsender-gravity-forms' !== $hook) {
+        if ('toplevel_page_starsender-gravity-forms' !== $hook && 'starsender-gravity-forms_page_starsender-enable-forms' !== $hook) {
             return;
         }
 
@@ -151,7 +172,18 @@ class Starsender_Gravity_Forms_Plugin {
             return;
         }
 
-        SGF_Settings::get_instance()->render_page();
+        SGF_Settings::get_instance()->render_main_settings_page();
+    }
+
+    /**
+     * Render enable forms page
+     */
+    public function render_enable_forms_page() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        SGF_Settings::get_instance()->render_enable_forms_page();
     }
 
     /**

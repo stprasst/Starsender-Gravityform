@@ -102,6 +102,26 @@ _Sent via Starsender for Gravity Forms_`;
     };
 
     /**
+     * Restore default customer template function
+     */
+    window.sgfRestoreDefaultCustomerTemplate = function() {
+        const defaultTemplate = `📋 *Copy of Your Submission*
+
+Thank you for submitting the form "*{form_title}*".
+
+Here is a copy of your submission:
+
+{fields}
+
+---
+_Sent via Starsender for Gravity Forms_`;
+
+        if (confirm(sgfAdmin.strings.restoreTemplate)) {
+            $('#sgf_customer_message_template').val(defaultTemplate);
+        }
+    };
+
+    /**
      * Document ready
      */
     $(document).ready(function() {

@@ -53,16 +53,22 @@
 /* Notice Styles */
 #sgf-test-result .notice {
     margin: 0;
+    padding: 10px;
 }
 
 #sgf-test-result .notice-success {
-    border-left-color: #00a32a;
+    border-left: 4px solid #00a32a;
     background: #edfaef;
 }
 
 #sgf-test-result .notice-error {
-    border-left-color: #dc3232;
+    border-left: 4px solid #dc3232;
     background: #fef2f2;
+}
+
+#sgf-test-result .notice-warning {
+    border-left: 4px solid #dba617;
+    background: #fff8e5;
 }
 
 /* Button Styles */

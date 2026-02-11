@@ -57,6 +57,12 @@ class SGF_Settings {
             'default' => $this->get_default_template(),
         ]);
 
+        register_setting('sgf_settings', 'sgf_customer_message_template', [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_textarea_field',
+            'default' => $this->get_default_customer_template(),
+        ]);
+
         register_setting('sgf_settings', 'sgf_enable_for_forms', [
             'type' => 'array',
             'default' => [],
@@ -101,7 +107,7 @@ class SGF_Settings {
     }
 
     /**
-     * Get default message template
+     * Get default message template for admin
      */
     private function get_default_template() {
         return "📝 *New Form Submission*
@@ -116,9 +122,25 @@ _Sent via Starsender for Gravity Forms_";
     }
 
     /**
-     * Render settings page
+     * Get default message template for customer
      */
-    public function render_page() {
+    private function get_default_customer_template() {
+        return "📋 *Copy of Your Submission*
+
+Thank you for submitting the form \"*{form_title}*\".
+
+Here is a copy of your submission:
+
+{fields}
+
+---
+_Sent via Starsender for Gravity Forms_";
+    }
+
+    /**
+     * Render main settings page
+     */
+    public function render_main_settings_page() {
         if (!current_user_can('manage_options')) {
             return;
         }
@@ -126,25 +148,30 @@ _Sent via Starsender for Gravity Forms_";
         $api_key = get_option('sgf_api_key', '');
         $admin_numbers = get_option('sgf_admin_numbers', '');
         $message_template = get_option('sgf_message_template', $this->get_default_template());
+        $customer_message_template = get_option('sgf_customer_message_template', $this->get_default_customer_template());
         $send_to_customer = get_option('sgf_send_to_customer', false);
-
-        // Get all Gravity Forms
-        $forms = $this->get_gravity_forms();
-        $enabled_forms = get_option('sgf_enable_for_forms', []);
 
         // Show settings errors if any
         settings_errors('sgf_settings');
         ?>
         <div class="wrap sgf-settings-wrap">
             <h1>
-                <span class="dashicons dashicons-whatsapp" style="font-size: 1.5em; vertical-align: middle; margin-right: 10px;"></span>
                 <?php _e('Starsender for Gravity Forms', 'starsender-gravity-forms'); ?>
             </h1>
 
             <div class="sgf-settings-container">
                 <!-- Main Settings Form -->
                 <div class="sgf-card">
-                    <h2><?php _e('API Configuration', 'starsender-gravity-forms'); ?></h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
+                        <h2 style="margin: 0; padding: 0; border: none; font-size: 1.3em;"><?php _e('API Configuration', 'starsender-gravity-forms'); ?></h2>
+                        <button type="button" class="button button-secondary" id="sgf-test-btn">
+                            <span class="dashicons dashicons-controls-play" style="vertical-align: middle;"></span>
+                            <?php _e('Test Connection', 'starsender-gravity-forms'); ?>
+                        </button>
+                    </div>
+
+                    <div id="sgf-test-result" style="margin: 15px 0; display: none;">
+                    </div>
 
                     <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
                         <input type="hidden" name="action" value="sgf_save_settings">
@@ -196,7 +223,7 @@ _Sent via Starsender for Gravity Forms_";
                             <tr>
                                 <th scope="row">
                                     <label for="sgf_message_template">
-                                        <?php _e('Message Template', 'starsender-gravity-forms'); ?>
+                                        <?php _e('Admin Message Template', 'starsender-gravity-forms'); ?>
                                     </label>
                                 </th>
                                 <td>
@@ -237,33 +264,65 @@ _Sent via Starsender for Gravity Forms_";
                                     </p>
                                 </td>
                             </tr>
+
+                            <tr>
+                                <th scope="row">
+                                    <label for="sgf_customer_message_template">
+                                        <?php _e('Customer Message Template', 'starsender-gravity-forms'); ?>
+                                    </label>
+                                </th>
+                                <td>
+                                    <textarea id="sgf_customer_message_template"
+                                              name="sgf_customer_message_template"
+                                              rows="10"
+                                              class="large-text code"><?php echo esc_textarea($customer_message_template); ?></textarea>
+                                    <p class="description">
+                                        <?php _e('Available placeholders:', 'starsender-gravity-forms'); ?>
+                                        <code>{form_title}</code>,
+                                        <code>{submission_date}</code>,
+                                        <code>{fields}</code>,
+                                        <code>{field:label}</code> (e.g., <code>{field:Email}</code>)
+                                    </p>
+                                    <button type="button" class="button button-secondary" onclick="sgfRestoreDefaultCustomerTemplate()">
+                                        <?php _e('Restore Default Template', 'starsender-gravity-forms'); ?>
+                                    </button>
+                                </td>
+                            </tr>
                         </table>
 
                         <?php submit_button(__('Save Settings', 'starsender-gravity-forms'), 'primary'); ?>
                     </form>
                 </div>
+            </div>
+        </div>
+        <?php
+    }
 
-                <!-- Test Connection Card -->
-                <div class="sgf-card">
-                    <h2><?php _e('Test Connection', 'starsender-gravity-forms'); ?></h2>
+    /**
+     * Render enable forms page
+     */
+    public function render_enable_forms_page() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
 
-                    <p><?php _e('Test your Starsender API connection by sending a test message to your admin numbers.', 'starsender-gravity-forms'); ?></p>
+        // Get all Gravity Forms
+        $forms = $this->get_gravity_forms();
+        $enabled_forms = get_option('sgf_enable_for_forms', []);
 
-                    <div id="sgf-test-connection">
-                        <button type="button" class="button button-primary button-large" id="sgf-test-btn">
-                            <span class="dashicons dashicons-controls-play"></span>
-                            <?php _e('Test Connection', 'starsender-gravity-forms'); ?>
-                        </button>
+        // Show settings errors if any
+        settings_errors('sgf_settings');
+        ?>
+        <div class="wrap sgf-settings-wrap">
+            <h1>
+            
+                <?php _e('Enable for Forms', 'starsender-gravity-forms'); ?>
+            </h1>
 
-                        <div id="sgf-test-result" style="margin-top: 15px; display: none;">
-                            <div class="notice" style="padding: 10px;"></div>
-                        </div>
-                    </div>
-                </div>
-
+            <div class="sgf-settings-container">
                 <!-- Enabled Forms Card -->
                 <div class="sgf-card">
-                    <h2><?php _e('Enable for Forms', 'starsender-gravity-forms'); ?></h2>
+                    <h2><?php _e('Select Forms to Enable WhatsApp Notifications', 'starsender-gravity-forms'); ?></h2>
 
                     <?php if (empty($forms)) : ?>
                         <p><?php _e('No Gravity Forms found. Create a form first to enable WhatsApp notifications.', 'starsender-gravity-forms'); ?></p>
@@ -323,25 +382,6 @@ _Sent via Starsender for Gravity Forms_";
                         </form>
                     <?php endif; ?>
                 </div>
-
-                <!-- Help Card -->
-                <div class="sgf-card">
-                    <h2><?php _e('Need Help?', 'starsender-gravity-forms'); ?></h2>
-
-                    <h3><?php _e('Documentation', 'starsender-gravity-forms'); ?></h3>
-                    <ul>
-                        <li><a href="https://docs.starsender.online/" target="_blank"><?php _e('Starsender API Documentation', 'starsender-gravity-forms'); ?> &rarr;</a></li>
-                        <li><a href="https://docs.gravityforms.com/" target="_blank"><?php _e('Gravity Forms Documentation', 'starsender-gravity-forms'); ?> &rarr;</a></li>
-                    </ul>
-
-                    <h3><?php _e('Support', 'starsender-gravity-forms'); ?></h3>
-                    <p><?php _e('If you need help, please visit our GitHub repository.', 'starsender-gravity-forms'); ?></p>
-                    <p>
-                        <a href="https://github.com/yayasanvitka/starsender-gravity-forms/issues" target="_blank" class="button button-secondary">
-                            <?php _e('Get Support', 'starsender-gravity-forms'); ?> &rarr;
-                        </a>
-                    </p>
-                </div>
             </div>
         </div>
         <?php
@@ -370,6 +410,10 @@ _Sent via Starsender for Gravity Forms_";
 
         if (isset($_POST['sgf_message_template'])) {
             update_option('sgf_message_template', sanitize_textarea_field($_POST['sgf_message_template']));
+        }
+
+        if (isset($_POST['sgf_customer_message_template'])) {
+            update_option('sgf_customer_message_template', sanitize_textarea_field($_POST['sgf_customer_message_template']));
         }
 
         if (isset($_POST['sgf_send_to_customer'])) {
@@ -403,8 +447,8 @@ _Sent via Starsender for Gravity Forms_";
 
         add_settings_error('sgf_settings', 'form_settings_saved', __('Form settings saved successfully. ' . count($enabled_forms) . ' form(s) enabled.', 'starsender-gravity-forms'), 'updated');
 
-        // Redirect back to settings page
-        wp_redirect(admin_url('admin.php?page=starsender-gravity-forms&settings-updated=true'));
+        // Redirect back to enable forms page
+        wp_redirect(admin_url('admin.php?page=starsender-enable-forms&settings-updated=true'));
         exit;
     }
 

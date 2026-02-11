@@ -185,7 +185,11 @@ class SGF_Form_Handler {
      * @return string Formatted message
      */
     private function prepare_customer_message($entry, $form) {
-        $template = "📋 *Copy of Your Submission*\n\nThank you for submitting the form \"*{form_title}*\".\n\nHere is a copy of your submission:\n\n{fields}\n\n---\n_Sent via Starsender for Gravity Forms_";
+        $template = get_option('sgf_customer_message_template', '');
+
+        if (empty($template)) {
+            $template = "📋 *Copy of Your Submission*\n\nThank you for submitting the form \"*{form_title}*\".\n\nHere is a copy of your submission:\n\n{fields}\n\n---\n_Sent via Starsender for Gravity Forms_";
+        }
 
         // Build fields output
         $fields_output = $this->build_fields_output($entry, $form);

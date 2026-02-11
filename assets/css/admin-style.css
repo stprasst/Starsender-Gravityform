@@ -1,0 +1,188 @@
+/**
+ * Starsender Gravity Forms Admin Styles
+ */
+
+.sgf-settings-wrap {
+    position: relative;
+}
+
+.sgf-settings-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.sgf-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
+.sgf-card h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    font-size: 1.3em;
+}
+
+.sgf-card h3 {
+    font-size: 1.1em;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.sgf-card .required {
+    color: #dc3232;
+}
+
+/* Form Table Styles */
+.sgf-card .form-table th {
+    width: 250px;
+    padding: 15px 10px 15px 0;
+}
+
+.sgf-card .form-table td {
+    padding: 15px 10px;
+}
+
+/* Notice Styles */
+#sgf-test-result .notice {
+    margin: 0;
+}
+
+#sgf-test-result .notice-success {
+    border-left-color: #00a32a;
+    background: #edfaef;
+}
+
+#sgf-test-result .notice-error {
+    border-left-color: #dc3232;
+    background: #fef2f2;
+}
+
+/* Button Styles */
+#sgf-test-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#sgf-test-btn .dashicons {
+    font-size: 16px;
+}
+
+/* Rotating animation for loading state */
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.rotating {
+    animation: rotate 1s linear infinite;
+}
+
+/* Responsive Styles */
+@media (min-width: 1200px) {
+    .sgf-card {
+        flex: 1 1 calc(50% - 20px);
+        max-width: calc(50% - 20px);
+    }
+
+    .sgf-card:first-child {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+}
+
+/* Code textarea styling */
+.sgf-card textarea.code {
+    font-family: Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 10px;
+}
+
+/* Help card list styling */
+.sgf-card ul {
+    list-style: disc;
+    margin-left: 20px;
+}
+
+.sgf-card ul li {
+    margin-bottom: 8px;
+}
+
+.sgf-card ul li a {
+    text-decoration: none;
+}
+
+.sgf-card ul li a:hover {
+    text-decoration: underline;
+}
+
+/* Dashboard icon */
+.dashicons-whatsapp {
+    color: #25D366;
+}
+
+/* Form table styling */
+.sgf-card .wp-list-table {
+    margin-top: 15px;
+    border: 1px solid #c3c4c7;
+}
+
+.sgf-card .wp-list-table thead th {
+    background: #f6f7f7;
+    font-weight: 600;
+}
+
+.sgf-card .wp-list-table tbody td {
+    vertical-align: middle;
+}
+
+/* Checkbox styling */
+.sgf-card input[type="checkbox"] {
+    height: 20px;
+    width: 20px;
+}
+
+/* Status Badge Styles */
+.sgf-status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sgf-status-enabled {
+    background-color: #edfaef;
+    color: #00a32a;
+    border: 1px solid #00a32a;
+}
+
+.sgf-status-disabled {
+    background-color: #fef7f7;
+    color: #d63638;
+    border: 1px solid #d63638;
+}
+
+/* Forms table specific styling */
+.sgf-forms-table tbody tr:hover {
+    background-color: #f6f7f7;
+}
+
+.sgf-forms-table .sgf-status-badge {
+    white-space: nowrap;
+}

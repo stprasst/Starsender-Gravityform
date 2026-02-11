@@ -53,7 +53,7 @@ class SGF_Starsender_API {
     public function send_message($to, $message, $message_type = 'text', $file_url = null, $delay = null, $schedule = null) {
         // Sanitize inputs
         $to = $this->sanitize_phone_number($to);
-        $message = sanitize_text_field($message);
+        $message = $this->sanitize_whatsapp_message($message);
         $message_type = sanitize_text_field($message_type);
 
         // Validate message type
@@ -196,6 +196,36 @@ class SGF_Starsender_API {
         }
 
         return $phone;
+    }
+
+    /**
+     * Sanitize WhatsApp message content
+     * Removes harmful content while preserving newlines for WhatsApp formatting
+     *
+     * @param string $message Message content
+     * @return string Sanitized message
+     */
+    private function sanitize_whatsapp_message($message) {
+        // Check if message is a string
+        if (!is_string($message)) {
+            return '';
+        }
+
+        // Strip HTML tags
+        $message = strip_tags($message);
+
+        // Remove null bytes
+        $message = str_replace("\0", '', $message);
+
+        // Remove control characters except newlines, tabs, and carriage returns
+        $message = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $message);
+
+        // Remove overly long sequences (potential buffer overflow attempts)
+        if (strlen($message) > 65536) {
+            $message = substr($message, 0, 65536);
+        }
+
+        return $message;
     }
 
     /**

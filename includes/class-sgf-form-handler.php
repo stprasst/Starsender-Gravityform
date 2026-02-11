@@ -127,6 +127,11 @@ class SGF_Form_Handler {
     private function send_to_numbers($numbers, $message, $api_key, $entry, $form) {
         $api = new SGF_Starsender_API($api_key);
 
+        // Debug: Log the message content before sending
+        error_log('Starsender GF: Message to send contains ' . substr_count($message, PHP_EOL) . ' PHP_EOL line breaks');
+        error_log('Starsender GF: Message contains ' . substr_count($message, "\n") . ' \\n line breaks');
+        error_log('Starsender GF: Message preview (first 500 chars): ' . substr($message, 0, 500));
+
         foreach ($numbers as $number) {
             error_log('Starsender GF: Sending message to ' . $number);
             $result = $api->send_message($number, $message);
@@ -142,6 +147,27 @@ class SGF_Form_Handler {
     }
 
     /**
+     * Normalize line breaks in template
+     * Converts literal \n to actual newlines and standardizes line endings
+     *
+     * @param string $text Text to normalize
+     * @return string Normalized text
+     */
+    private function normalize_line_breaks($text) {
+        // Convert literal \n (backslash-n) to actual newlines
+        $text = str_replace('\\n', "\n", $text);
+
+        // Convert literal \r\n (backslash-r-backslash-n) to actual newlines
+        $text = str_replace('\\r\\n', "\n", $text);
+
+        // Standardize all line endings to \n
+        $text = str_replace("\r\n", "\n", $text);
+        $text = str_replace("\r", "\n", $text);
+
+        return $text;
+    }
+
+    /**
      * Prepare message for admin
      *
      * @param array $entry The entry object
@@ -152,11 +178,22 @@ class SGF_Form_Handler {
         $template = get_option('sgf_message_template', '');
 
         if (empty($template)) {
-            $template = "📝 *New Form Submission*\n\n*Form:* {form_title}\n*Date:* {submission_date}\n\n{fields}\n\n---\n_Sent via Starsender for Gravity Forms_";
+            $template = "📝 *New Form Submission*" . PHP_EOL . PHP_EOL .
+                        "*Form:* {form_title}" . PHP_EOL .
+                        "*Date:* {submission_date}" . PHP_EOL . PHP_EOL .
+                        "{fields}" . PHP_EOL . PHP_EOL .
+                        "---" . PHP_EOL .
+                        "_Sent via Starsender for Gravity Forms_";
         }
+
+        // Normalize line breaks in template (in case stored as literal \n)
+        $template = $this->normalize_line_breaks($template);
 
         // Build fields output
         $fields_output = $this->build_fields_output($entry, $form);
+
+        // Debug: Log the fields output before replacement
+        error_log('Starsender GF: Fields output contains ' . substr_count($fields_output, PHP_EOL) . ' line breaks');
 
         // Sanitize form title for message content
         $form_title = sanitize_text_field($form['title']);
@@ -179,8 +216,15 @@ class SGF_Form_Handler {
         // Apply replacements
         $message = str_replace(array_keys($replacements), array_values($replacements), $template);
 
+        // Debug: Check newlines after replacement
+        error_log('Starsender GF: Message after replacement contains ' . substr_count($message, PHP_EOL) . ' line breaks');
+        error_log('Starsender GF: Message preview: ' . substr($message, 0, 300));
+
         // Additional sanitization for message content (remove potentially harmful characters for WhatsApp)
         $message = $this->sanitize_message_content($message);
+
+        // Debug: Check newlines after sanitization
+        error_log('Starsender GF: Message after sanitization contains ' . substr_count($message, PHP_EOL) . ' line breaks');
 
         return $message;
     }
@@ -196,8 +240,16 @@ class SGF_Form_Handler {
         $template = get_option('sgf_customer_message_template', '');
 
         if (empty($template)) {
-            $template = "📋 *Copy of Your Submission*\n\nThank you for submitting the form \"*{form_title}*\".\n\nHere is a copy of your submission:\n\n{fields}\n\n---\n_Sent via Starsender for Gravity Forms_";
+            $template = "📋 *Copy of Your Submission*" . PHP_EOL . PHP_EOL .
+                        "Thank you for submitting the form \"*{form_title}*\"." . PHP_EOL . PHP_EOL .
+                        "Here is a copy of your submission:" . PHP_EOL . PHP_EOL .
+                        "{fields}" . PHP_EOL . PHP_EOL .
+                        "---" . PHP_EOL .
+                        "_Sent via Starsender for Gravity Forms_";
         }
+
+        // Normalize line breaks in template (in case stored as literal \n)
+        $template = $this->normalize_line_breaks($template);
 
         // Build fields output
         $fields_output = $this->build_fields_output($entry, $form);
@@ -265,10 +317,17 @@ class SGF_Form_Handler {
             // Sanitize field label (form configuration could be manipulated)
             $label = sanitize_text_field($field['label']);
 
-            $output .= '*' . $label . ':* ' . $value . "\n\n";
+            // Use PHP_EOL for reliable line breaks across platforms
+            $output .= '*' . $label . ':* ' . $value . PHP_EOL . PHP_EOL;
         }
 
-        return rtrim($output);
+        $output = rtrim($output);
+
+        // Debug log to verify newlines are present at this stage
+        error_log('Starsender GF: Fields output length: ' . strlen($output));
+        error_log('Starsender GF: Fields output preview: ' . substr($output, 0, 200));
+
+        return $output;
     }
 
     /**
